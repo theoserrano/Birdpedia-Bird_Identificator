@@ -1,0 +1,30 @@
+# Gitignore para o projeto Birdpedia
+
+# Datasets e imagens (nunca versionar no Git)
+archive/
+data/
+dataset_original/
+dataset_processado/
+*.zip
+*.tar.gz
+*.jpg
+*.jpeg
+*.png
+
+# Python / IDEs
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+.ipynb_checkpoints/
+
+# Resultados e caches de treinamento
+*.pkl
+*.joblib
+reports/
+output/
