@@ -48,6 +48,31 @@ O script gerará uma imagem comparativa de alta resolução em `reports/demonstr
 
 ---
 
-## 3. Próximos Passos
+## 3. Frente 2: Segmentação e Morfologia Matemática (Guilherme)
+
+O módulo `src/segmentation.py` gera a máscara binária da ave (ave = 255, fundo = 0), do mesmo tamanho da imagem pré-processada (224x224) e com um único componente conexo.
+
+Etapas: limiarização de Otsu nos canais S, a*, b*, L* e D (distância de cor ao fundo, estimado por k-means na moldura) → correção automática de polaridade com prioridade ao centro (a ave é a classe mais presente no centro do que na borda) → escolha do canal por separabilidade de Otsu × (cobertura central − cobertura da borda) → abertura e fechamento com elemento estruturante elíptico → componente conexo de maior área ponderada pelo centro → preenchimento de buracos → **refinamento com GrabCut** (padrão; inicializado por retângulo central, com fallback ancorado no núcleo da máscara de Otsu e, por fim, na própria máscara de Otsu). Use `get_bird_mask(path, method="otsu")` para obter apenas o resultado clássico de Otsu + morfologia.
+
+```python
+from src.segmentation import get_bird_mask, get_mask
+
+mask = get_bird_mask("caminho_da_imagem.jpg")               # a partir do caminho
+mask, steps = get_bird_mask(path, return_steps=True)        # com etapas intermediárias
+img = steps["preprocessed"]["filtered_bgr"]                 # imagem alinhada à máscara
+
+res = preprocess_pipeline(path)                             # ou reaproveitando o pré-processamento
+mask = get_mask(res)
+```
+
+### Como testar o módulo de segmentação:
+```bash
+python test_guilherme_segmentation.py --stats 30
+```
+Gera `reports/demonstracao_segmentacao.png` (uma ave por espécie, etapa a etapa) e imprime estatísticas de área das máscaras por espécie.
+
+---
+
+## 4. Próximos Passos
 - **Guilherme:** Implementar `src/segmentation.py` (Limiarização Otsu e Morfologia Matemática sobre os canais HSV/Lab gerados).
 - **Douglas:** Implementar `src/features.py` (Momentos de Hu, LBP, Histogramas) e `src/classifier.py` (SVM/Random Forest).

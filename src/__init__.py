@@ -1,8 +1,3 @@
-"""
-Birdpedia - Sistema Híbrido de Segmentação e Classificação de Espécies de Aves
-Módulo principal do projeto
-"""
-
 from .preprocessing import (
     load_image,
     apply_gaussian_blur,
@@ -10,6 +5,11 @@ from .preprocessing import (
     convert_color_spaces,
     enhance_contrast_clahe,
     preprocess_pipeline,
+)
+from .segmentation import (
+    get_mask,
+    get_bird_mask,
+    apply_mask,
 )
 
 __all__ = [
@@ -19,4 +19,7 @@ __all__ = [
     "convert_color_spaces",
     "enhance_contrast_clahe",
     "preprocess_pipeline",
+    "get_mask",
+    "get_bird_mask",
+    "apply_mask",
 ]

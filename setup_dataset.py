@@ -2,26 +2,10 @@ import os
 import shutil
 from pathlib import Path
 
-# ==============================================================================
-# CONFIGURAÇÃO DO DATASET - BIRDPEDIA
-# Responsável: Théo do Rego Barros Serrano
-# ==============================================================================
 
-# Caminho da pasta original (extraída do Kaggle) e da pasta de destino para o projeto
-ORIGEM = Path("./archive")  # Pasta local onde o Kaggle foi descompactado
-DESTINO = Path("./data/raw") # Pasta padronizada para os modelos e notebooks
+ORIGEM = Path("./archive")
+DESTINO = Path("./data/raw")
 
-# Seleção de 10 espécies com alto contraste de cor e silhuetas bem distintas:
-# 1. AMERICAN FLAMINGO       -> Rosa marcante, pescoço e pernas longas
-# 2. AMERICAN GOLDFINCH      -> Amarelo vivo (ideal para HSV)
-# 3. AFRICAN EMERALD CUCKOO  -> Verde esmeralda brilhante
-# 4. AFRICAN FIREFINCH       -> Vermelho vivo
-# 5. ALEXANDRINE PARAKEET    -> Verde característico com bico curvo vermelho
-# 6. AFRICAN CROWNED CRANE   -> Crista dourada, corpo escuro e silhueta imponente
-# 7. ALBATROSS               -> Branco/cinza com asas longas
-# 8. ALPINE CHOUGH           -> Preto sólido com bico amarelo contrastante
-# 9. AMERICAN AVOCET         -> Tons canela/alaranjado, bico longo curvado para cima
-# 10. AMERICAN KESTREL       -> Padrão rajado de falcão, rico em textura (marrom/azulado)
 ESPECIES_ALVO = [
     "AMERICAN FLAMINGO",
     "AMERICAN GOLDFINCH",
@@ -64,7 +48,6 @@ def preparar_dataset():
 
             if caminho_orig.exists():
                 caminho_dest.mkdir(parents=True, exist_ok=True)
-                # Copia todos os arquivos da pasta
                 qtd_arquivos = 0
                 for arquivo in caminho_orig.glob("*.*"):
                     shutil.copy2(arquivo, caminho_dest / arquivo.name)
