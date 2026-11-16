@@ -11,6 +11,15 @@ from .segmentation import (
     get_bird_mask,
     apply_mask,
 )
+from .features import (
+    extract_features,
+    extract_shape_features,
+    extract_color_features,
+    extract_texture_features,
+    FEATURE_NAMES_V1,
+    FEATURE_GROUPS,
+    FEATURE_VERSION,
+)
 
 __all__ = [
     "load_image",
@@ -22,4 +31,11 @@ __all__ = [
     "get_mask",
     "get_bird_mask",
     "apply_mask",
+    "extract_features",
+    "extract_shape_features",
+    "extract_color_features",
+    "extract_texture_features",
+    "FEATURE_NAMES_V1",
+    "FEATURE_GROUPS",
+    "FEATURE_VERSION",
 ]
