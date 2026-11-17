@@ -1,13 +1,14 @@
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import cv2
 import numpy as np
 from skimage.feature import local_binary_pattern
+from sklearn.base import BaseEstimator, TransformerMixin
 
 from .preprocessing import preprocess_pipeline
 from .segmentation import get_bird_mask
 
-FEATURE_VERSION = "v1"
+FEATURE_VERSION = "v2"
 
 H_BINS = 16
 S_BINS = 16
@@ -108,7 +109,7 @@ def extract_shape_features(mask: np.ndarray) -> np.ndarray:
 
     moments = cv2.moments(binary, binaryImage=True)
     hu = cv2.HuMoments(moments).ravel()
-    hu = np.sign(hu) * np.log1p(np.abs(hu))
+    hu = -np.sign(hu) * np.log10(np.abs(hu) + 1e-30)
 
     contour = _largest_contour(binary)
     if contour is None:
@@ -345,3 +346,25 @@ def extract_features(
         "groups": FEATURE_GROUPS,
         "meta": meta,
     }
+
+
+HISTOGRAM_PREFIXES = ("color_hs_hist", "texture_lbp")
+
+
+def histogram_columns(feature_names: Sequence[str]) -> List[int]:
+    return [i for i, name in enumerate(feature_names) if str(name).startswith(HISTOGRAM_PREFIXES)]
+
+
+class HellingerTransform(BaseEstimator, TransformerMixin):
+    def __init__(self, columns: Optional[Sequence[int]] = None):
+        self.columns = columns
+
+    def fit(self, x: np.ndarray, y: Optional[np.ndarray] = None) -> "HellingerTransform":
+        return self
+
+    def transform(self, x: np.ndarray) -> np.ndarray:
+        x = np.array(x, dtype=np.float64, copy=True)
+        if self.columns:
+            cols = np.asarray(self.columns, dtype=int)
+            x[:, cols] = np.sqrt(np.clip(x[:, cols], 0.0, None))
+        return x

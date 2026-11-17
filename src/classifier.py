@@ -18,6 +18,7 @@ import sklearn
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
@@ -34,11 +35,11 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
 try:
-    from .features import extract_features
+    from .features import HellingerTransform, extract_features, histogram_columns
 except ImportError:
-    from features import extract_features
+    from features import HellingerTransform, extract_features, histogram_columns
 
-DEFAULT_FEATURES = Path("data/processed/features_otsu_v1.npz")
+DEFAULT_FEATURES = Path("data/processed/features_grabcut_v2.npz")
 DEFAULT_OUT = Path("reports/classifier")
 DEFAULT_MODEL = DEFAULT_OUT / "model.joblib"
 
@@ -155,9 +156,13 @@ def validate_dataset(dataset: Dict[str, object]) -> List[str]:
     return labels
 
 
-def _make_models(seed: int, quick: bool) -> Dict[str, Tuple[Pipeline, Dict]]:
+def _make_models(
+    seed: int, quick: bool, hist_cols: Optional[Sequence[int]] = None
+) -> Dict[str, Tuple[Pipeline, Dict]]:
+    hist_cols = list(hist_cols or [])
     svm = Pipeline(
         [
+            ("hellinger", HellingerTransform(hist_cols)),
             ("scaler", StandardScaler()),
             (
                 "svm",
@@ -166,6 +171,16 @@ def _make_models(seed: int, quick: bool) -> Dict[str, Tuple[Pipeline, Dict]]:
                     class_weight="balanced",
                     random_state=seed,
                 ),
+            ),
+        ]
+    )
+    logreg = Pipeline(
+        [
+            ("hellinger", HellingerTransform(hist_cols)),
+            ("scaler", StandardScaler()),
+            (
+                "logreg",
+                LogisticRegression(class_weight="balanced", max_iter=5000),
             ),
         ]
     )
@@ -185,6 +200,7 @@ def _make_models(seed: int, quick: bool) -> Dict[str, Tuple[Pipeline, Dict]]:
 
     if quick:
         svm_grid = {"svm__C": [1, 10, 100], "svm__gamma": ["scale", "auto"]}
+        logreg_grid = {"logreg__C": [0.03, 0.1, 0.3]}
         rf_grid = {
             "rf__n_estimators": [200],
             "rf__max_depth": [None, 20],
@@ -195,13 +211,14 @@ def _make_models(seed: int, quick: bool) -> Dict[str, Tuple[Pipeline, Dict]]:
             "svm__C": [1, 10, 100],
             "svm__gamma": ["scale", 0.001, 0.005, 0.01],
         }
+        logreg_grid = {"logreg__C": [0.01, 0.03, 0.1, 0.3, 1.0]}
         rf_grid = {
             "rf__n_estimators": [200, 400],
             "rf__max_depth": [None, 20, 40],
             "rf__min_samples_leaf": [1, 2],
         }
 
-    return {"svm": (svm, svm_grid), "rf": (rf, rf_grid)}
+    return {"svm": (svm, svm_grid), "logreg": (logreg, logreg_grid), "rf": (rf, rf_grid)}
 
 
 def _run_search(
@@ -394,10 +411,15 @@ def _run_ablation(
                 (f"{names[i]}+{names[j]}", np.concatenate([first, second]))
             )
 
-    base = clone(base_pipeline)
+    hist_set = set(histogram_columns(dataset["feature_names"]))
 
     rows = []
     for name, indices in subsets:
+        base = clone(base_pipeline)
+        if "hellinger" in base.named_steps:
+            base.set_params(
+                hellinger__columns=[i for i, col in enumerate(indices) if int(col) in hist_set]
+            )
         result = cross_validate(
             base,
             x[:, indices],
@@ -910,7 +932,9 @@ def cmd_train(args: argparse.Namespace) -> int:
     print("=" * 64)
 
     cv = StratifiedKFold(n_splits=args.folds, shuffle=True, random_state=args.seed)
-    model_specs = _make_models(args.seed, args.quick)
+    model_specs = _make_models(
+        args.seed, args.quick, histogram_columns(dataset["feature_names"])
+    )
 
     searches: Dict[str, Dict[str, object]] = {}
     search_objects: Dict[str, GridSearchCV] = {}
@@ -951,11 +975,12 @@ def cmd_train(args: argparse.Namespace) -> int:
         "class_names": [str(label) for label in labels],
         "model_name": best_name,
         "model_params": searches[best_name]["best_params"],
-        "calibration": (
-            "CalibratedClassifierCV(ensemble=False, cv=5)"
-            if best_name == "svm"
-            else "nativa (RandomForest.predict_proba)"
-        ),
+        "calibration": {
+            "svm": "CalibratedClassifierCV(ensemble=False, cv=5)",
+            "logreg": "nativa (LogisticRegression.predict_proba)",
+            "rf": "nativa (RandomForest.predict_proba)",
+        }[best_name],
+        "hellinger_columns": histogram_columns(feature_names),
         "cv": searches[best_name],
         "holdout_splits": list(args.holdout),
         "n_train": int(x_train.shape[0]),
@@ -1047,8 +1072,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["svm", "rf"],
-        choices=["svm", "rf"],
+        default=["svm", "logreg"],
+        choices=["svm", "logreg", "rf"],
     )
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0)
