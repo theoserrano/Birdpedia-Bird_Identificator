@@ -162,7 +162,7 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--method",
-        default="otsu",
+        default="grabcut",
         choices=["otsu", "grabcut"],
         help="Método de segmentação usado para gerar a máscara.",
     )
