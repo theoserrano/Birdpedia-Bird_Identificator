@@ -14,7 +14,7 @@ Identificar a espécie de uma ave numa foto é uma tarefa difícil até para que
 
 ## Base de dados
 
-Usamos o dataset público do Kaggle [NOME DO DATASET](LINK), que tem 20 espécies. Escolhemos 10 delas:
+Usamos o dataset público do Kaggle [Birds 20 Species - Image Classification](https://www.kaggle.com/datasets/umairshahpirzada/birds-20-species-image-classification), que tem 20 espécies. Escolhemos 10 delas:
 
 - African Crowned Crane
 - African Emerald Cuckoo
