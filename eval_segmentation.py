@@ -1,4 +1,5 @@
 import argparse
+import csv
 import random
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
@@ -64,12 +65,15 @@ def evaluate(
         pred = mask_fn(preprocess_pipeline(str(path)))
         per_species.setdefault(species, []).append(iou_dice(pred, ref))
 
+    # "n" guarda quantas imagens entraram na média de cada espécie (usado no CSV)
     result = {sp: {"iou": float(np.mean([v[0] for v in vals])),
-                   "dice": float(np.mean([v[1] for v in vals]))}
+                   "dice": float(np.mean([v[1] for v in vals])),
+                   "n": len(vals)}
               for sp, vals in per_species.items()}
     all_vals = [v for vals in per_species.values() for v in vals]
     result["MÉDIA"] = {"iou": float(np.mean([v[0] for v in all_vals])),
-                       "dice": float(np.mean([v[1] for v in all_vals]))}
+                       "dice": float(np.mean([v[1] for v in all_vals])),
+                       "n": len(all_vals)}
 
     if verbose:
         print(f"{'Espécie':<26}{'IoU':>7}{'Dice':>7}")
@@ -83,11 +87,24 @@ def main():
     parser.add_argument("--split", default="train")
     parser.add_argument("--n", type=int, default=20, help="imagens por espécie")
     parser.add_argument("--method", default="grabcut", choices=["grabcut", "otsu"])
+    # Opcional: salva a tabela por espécie (com a linha MÉDIA) em CSV.
+    # Sem --out o script só imprime no terminal, como antes.
+    parser.add_argument("--out", type=Path, default=None, help="arquivo .csv de saída")
     args = parser.parse_args()
 
     samples = sample_images(args.split, args.n)
     print(f"Avaliando method={args.method} em {len(samples)} imagens ({args.split})\n")
-    evaluate(samples, args.split, lambda pre: get_mask(pre, method=args.method))
+    result = evaluate(samples, args.split, lambda pre: get_mask(pre, method=args.method))
+
+    # Grava o CSV só quando --out foi informado; cria a pasta se não existir
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        with open(args.out, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["especie", "iou", "dice", "n_imagens"])
+            for sp, m in result.items():
+                writer.writerow([sp, f"{m['iou']:.4f}", f"{m['dice']:.4f}", m["n"]])
+        print(f"\nTabela salva em {args.out}")
 
 
 if __name__ == "__main__":
